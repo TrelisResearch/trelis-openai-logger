@@ -115,10 +115,7 @@ ssh-keygen -t ed25519 -f ~/.ssh/do_llm_logger -N ""
 # Add SSH key to Digital Ocean
 doctl compute ssh-key import llm-logger --public-key-file ~/.ssh/do_llm_logger.pub
 ```
-
-Then choose either automated or manual setup:
-
-#### A. Automated Setup (Recommended)
+Then proceed to setup.
 
 ```bash
 # Run setup script
@@ -133,63 +130,6 @@ The script will:
 3. Configure remote access
 4. Test the connection
 5. Provide you with the connection string
-
-#### B. Manual Setup
-
-1. Get the SSH key ID:
-```bash
-SSH_KEY_ID=$(doctl compute ssh-key list --format ID --no-header)
-```
-
-2. Create droplet with PostgreSQL:
-```bash
-# Create cloud-init config
-cat > cloud-init.yml << 'EOF'
-#cloud-config
-package_update: true
-packages: [postgresql, postgresql-contrib]
-
-runcmd:
-  - systemctl start postgresql
-  - sudo -u postgres createdb llm_logs
-  - sudo -u postgres psql -c "ALTER USER postgres PASSWORD '${DB_PASSWORD}';"
-  - sudo -u postgres psql -c "ALTER SYSTEM SET listen_addresses TO '*';"
-  - echo "host all all 0.0.0.0/0 md5" >> /etc/postgresql/14/main/pg_hba.conf
-  - systemctl restart postgresql
-EOF
-
-# Create droplet
-doctl compute droplet create \
-    --image ubuntu-22-04-x64 \
-    --size s-1vcpu-1gb \
-    --region lon1 \
-    --ssh-keys $SSH_KEY_ID \
-    --user-data-file cloud-init.yml \
-    llm-logger
-
-# Get droplet IP
-DROPLET_IP=$(doctl compute droplet list --format PublicIPv4 --no-header)
-
-# Add to known hosts
-ssh-keyscan -H $DROPLET_IP >> ~/.ssh/known_hosts
-
-# Wait for setup to complete (~2 minutes)
-sleep 120
-
-# Copy and run migrations
-scp setup/migrations/01_create_tables.sql root@${DROPLET_IP}:/tmp/
-ssh root@${DROPLET_IP} 'sudo -u postgres psql -d llm_logs -f /tmp/01_create_tables.sql'
-
-# Test connection and get your connection string
-CONNECTION_STRING="postgresql://postgres:${DB_PASSWORD}@${DROPLET_IP}/llm_logs"
-
-# Add to .env file
-echo "DATABASE_URL='${CONNECTION_STRING}'" >> .env
-
-# Now you can run the example
-source .env
-uv run example.py
-```
 
 #### Cleanup
 
