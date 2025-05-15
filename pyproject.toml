@@ -1,0 +1,37 @@
+[project]
+name = "trelis-openai-logger"
+version = "0.1.0"
+description = "PostgreSQL logger for OpenAI-style LLM API interactions"
+readme = "README.md"
+authors = [
+    { name = "Trelis Research", email = "hello@trelis.com" }
+]
+keywords = ["openai", "logging", "postgresql", "llm", "monitoring"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "openai>=1.25.0",
+    "sqlalchemy>=2.0.0",
+    "psycopg2-binary>=2.9.0",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "asyncpg>=0.29,<1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

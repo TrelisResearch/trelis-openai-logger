@@ -1,0 +1,37 @@
+#cloud-config
+package_update: true
+packages: [postgresql, postgresql-contrib]
+
+write_files:
+  - path: /tmp/create_tables.sql
+    content: |
+      -- Create llm_traces table
+      CREATE TABLE IF NOT EXISTS llm_traces (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          model VARCHAR(255),
+          endpoint VARCHAR(255),
+          prompt JSONB,
+          response JSONB,
+          latency_ms FLOAT,
+          status_code INTEGER,
+          prompt_tokens INTEGER,
+          completion_tokens INTEGER,
+          total_tokens INTEGER,
+          meta_data JSONB,
+          error TEXT
+      );
+    owner: postgres:postgres
+    permissions: '0644'
+
+runcmd:
+  # Configure PostgreSQL
+  - systemctl start postgresql
+  - sudo -u postgres createdb llm_logs
+  - sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'your_secure_password';"
+  - sudo -u postgres psql -c "ALTER SYSTEM SET listen_addresses TO '*';"
+  - sudo -u postgres psql -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+  - echo "host all all 0.0.0.0/0 md5" >> /etc/postgresql/14/main/pg_hba.conf
+  - systemctl restart postgresql
+  # Run migrations
+  - sudo -u postgres psql -d llm_logs -f /tmp/create_tables.sql
