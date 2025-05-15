@@ -319,19 +319,7 @@ Connect to your PostgreSQL database based on your setup:
 # Local PostgreSQL
 psql llm_logs
 
-# DigitalOcean Droplet
-# Using environment variables from .env
-source .env
-PGPASSWORD="$DB_PASSWORD" psql -h your_droplet_ip -U postgres llm_logs
-
-e.g.
-source .env
-PGPASSWORD="$DB_PASSWORD" psql -h 159.65.58.176 -U postgres llm_logs
-
-# DigitalOcean Managed Database
-psql "your_connection_string"
-
-# Or use the connection string from your .env file
+# DigitalOcean Droplet or Database
 source .env
 psql "$DATABASE_URL"
 ```
