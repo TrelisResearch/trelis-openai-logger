@@ -37,7 +37,13 @@ print(response)
 
 ## Database Setup
 
-Before using the logger, you need a PostgreSQL database. Choose one of these setup options:
+> **Important**: The database schema is currently maintained in two places:
+> 1. `db/migrations/` directory - The primary source for local and managed database setup
+> 2. `setup/create_droplet.sh` - Contains an embedded copy for cloud-init droplet setup
+> 
+> When making schema changes, you must update both locations. This duplication exists because cloud-init requires the migration inline.
+
+Before using the logger, you need a PostgreSQL database. First set the environment variables, then choose one of the three options below.
 
 ### Environment Variables
 
@@ -116,6 +122,7 @@ Then choose either automated or manual setup:
 
 ```bash
 # Run setup script
+source .env
 chmod +x setup/create_droplet.sh
 ./setup/create_droplet.sh
 ```
@@ -222,6 +229,7 @@ doctl databases create llm-logger-db \
 
 # Get the connection details using the database ID
 doctl databases connection <database-id>
+```
 
 2. Add the connection URL to your .env file:
 ```bash
