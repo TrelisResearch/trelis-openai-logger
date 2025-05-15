@@ -30,6 +30,9 @@ response = client.chat.completions.create(
     model="gpt-4.1-mini",
     messages=[{"role": "user", "content": "What's one and two?"}],
 )
+
+# Print response
+print(response)
 ```
 
 ## Database Setup
@@ -341,7 +344,7 @@ SELECT
     response->'choices'->0->'message'->>'content' as message
 FROM llm_traces
 ORDER BY time DESC, role DESC
-LIMIT 20;
+LIMIT 2;
 
 -- Get average latency and token usage by model
 SELECT 
