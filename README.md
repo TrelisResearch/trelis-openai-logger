@@ -28,7 +28,7 @@ client = OpenAI(
 # Use normally - all calls are automatically logged
 response = client.chat.completions.create(
     model="gpt-4.1-mini",
-    messages=[{"role": "user", "content": "What's one and one?"}],
+    messages=[{"role": "user", "content": "What's one and two?"}],
 )
 ```
 
@@ -421,17 +421,26 @@ The system logs the following information for each interaction:
 - Custom metadata
 
 ## Publishing to PyPI
+```bash
+# 0) Clean out previous builds (avoids “file already exists” errors)
+rm -rf dist/                       # optional but safest
 
-1. Update version in `pyproject.toml` if needed
-2. Build the package:
-   ```bash
-   uv build
-   ```
-3. Check the built package in `dist/` directory
-4. Upload to PyPI under the Trelis organization:
-   ```bash
-   uv publish --repository https://upload.pypi.org/legacy/ --username __token__ --password <your-trelis-pypi-token>
-   ```
+# 1) Bump the version in pyproject.toml
+#    (PEP 440 format, e.g. 0.4.2 → 0.4.3)
+
+# 2) Build reproducible artifacts
+uv build --no-sources              # creates dist/*.whl and dist/*.tar.gz
+
+# 3) Smoke-test the artifacts locally
+uv pip install dist/trelis_openai_logger-*.whl && uv run python -c "import trelis_openai_logger"
+
+# 4) Point uv at your PyPI credentials
+export UV_PUBLISH_TOKEN=<TRELIS_PYPI_TOKEN>   # **only** this one var is needed
+# (uv picks up the username `__token__` automatically)
+
+# 5) Publish
+uv publish --publish-url https://upload.pypi.org/legacy/
+```
 
 Make sure you have:
 - Updated all documentation
