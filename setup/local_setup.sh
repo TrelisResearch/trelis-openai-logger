@@ -1,8 +1,16 @@
 #!/bin/bash
 set -e
 
-# Run migrations using default PostgreSQL connection
-psql -d llm_logs -f setup/migrations/01_create_tables.sql
+# Install dbmate if not present
+if ! command -v dbmate &> /dev/null; then
+    brew install dbmate
+fi
+
+# Set database URL for dbmate
+export DATABASE_URL="postgresql://localhost/llm_logs?sslmode=disable"
+
+# Run migrations
+dbmate up
 
 # Test connection
 cat > test_db.py << EOF

@@ -69,6 +69,9 @@ chmod +x setup/local_setup.sh
 
 # Test connection
 uv run test_local_db.py
+
+# Delete the database (optional)
+# dropdb llm_logs
 ```
 
 ### Option 2: DigitalOcean Droplet (~$12/month)
@@ -328,71 +331,21 @@ psql "$DATABASE_URL"
 Useful queries for analyzing your logs:
 
 ```sql
--- View recent chat conversations
-SELECT 
-    to_char(t.created_at, 'YYYY-MM-DD HH24:MI:SS') as time,
-    t.model,
-    '👤 User' as role,
-    p.value->>'content' as message
-FROM llm_traces t,
-    jsonb_array_elements(t.prompt) p
-UNION ALL
+-- View most recent conversation with all details
 SELECT 
     to_char(created_at, 'YYYY-MM-DD HH24:MI:SS') as time,
     model,
-    '🤖 Assistant' as role,
-    response->'choices'->0->'message'->>'content' as message
+    input_messages,
+    raw_response->'choices'->0->'message'->>'content' as assistant_response,
+    CASE 
+        WHEN raw_response->'choices'->0->'message'->'tool_calls' IS NOT NULL 
+        THEN jsonb_pretty(raw_response->'choices'->0->'message'->'tool_calls')
+    END as tool_calls,
+    latency_ms,
+    total_tokens
 FROM llm_traces
-ORDER BY time DESC, role DESC
-LIMIT 2;
-
--- Get average latency and token usage by model
-SELECT 
-    model, 
-    COUNT(*) as requests,
-    ROUND(AVG(latency_ms)::numeric, 2) as avg_latency_ms,
-    ROUND(AVG(total_tokens)::numeric, 2) as avg_tokens
-FROM llm_traces 
-WHERE error IS NULL
-GROUP BY model;
-
--- Find failed requests in the last 24 hours
-SELECT 
-    to_char(created_at, 'YYYY-MM-DD HH24:MI:SS') as time,
-    model,
-    error->>'message' as error_message,
-    error->>'type' as error_type
-FROM llm_traces
-WHERE 
-    error IS NOT NULL AND
-    created_at > NOW() - INTERVAL '24 hours'
-ORDER BY created_at DESC;
-
--- Get token usage per day
-SELECT 
-    DATE(created_at) as date,
-    model,
-    COUNT(*) as requests,
-    SUM(prompt_tokens) as prompt_tokens,
-    SUM(completion_tokens) as completion_tokens,
-    SUM(total_tokens) as total_tokens
-FROM llm_traces
-WHERE error IS NULL
-GROUP BY DATE(created_at), model
-ORDER BY date DESC, model;
-
--- Find similar prompts
-SELECT 
-    to_char(created_at, 'YYYY-MM-DD HH24:MI:SS') as time,
-    model,
-    p.value->>'content' as prompt,
-    response->'choices'->0->'message'->>'content' as response
-FROM llm_traces t,
-    jsonb_array_elements(t.prompt) p
-WHERE 
-    p.value->>'content' ILIKE '%your search term%'
 ORDER BY created_at DESC
-LIMIT 10;
+LIMIT 1;
 ```
 
 You can also create a `.psqlrc` file in your home directory to improve the psql experience:

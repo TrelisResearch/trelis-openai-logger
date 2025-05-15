@@ -80,16 +80,22 @@ def main():
         engine = create_engine(db_url)
         with engine.connect() as conn:
             result = conn.execute(text("""
+                WITH last_trace AS (
+                    SELECT * FROM llm_traces
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                )
                 SELECT 
                     to_char(created_at, 'YYYY-MM-DD HH24:MI:SS') as time,
                     model,
-                    prompt,
-                    response->>'content' as response,
+                    (SELECT value->>'content'
+                     FROM jsonb_array_elements(input_messages) 
+                     WHERE value->>'role' = 'user'
+                     LIMIT 1) as user_message,
+                    raw_response->'choices'->0->'message'->>'content' as assistant_message,
                     latency_ms,
                     total_tokens
-                FROM llm_traces
-                ORDER BY created_at DESC
-                LIMIT 1;
+                FROM last_trace;
             """)).fetchone()
             if result:
                 print('\n✓ Successfully logged to llm_traces:')

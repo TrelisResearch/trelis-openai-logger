@@ -70,26 +70,30 @@ package_update: true
 packages: [postgresql, postgresql-contrib]
 
 write_files:
-  - path: /tmp/create_tables.sql
+  - path: /tmp/setup_db.sh
     content: |
-      -- Create llm_traces table
-      CREATE TABLE IF NOT EXISTS llm_traces (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          model VARCHAR(255),
-          endpoint VARCHAR(255),
-          prompt JSONB,
-          response JSONB,
-          latency_ms FLOAT,
-          status_code INTEGER,
-          prompt_tokens INTEGER,
-          completion_tokens INTEGER,
-          total_tokens INTEGER,
-          meta_data JSONB,
-          error TEXT
-      );
+      #!/bin/bash
+      set -e
+      
+      # Install dbmate
+      curl -fsSL -o /usr/local/bin/dbmate https://github.com/amacneil/dbmate/releases/latest/download/dbmate-linux-amd64
+      chmod +x /usr/local/bin/dbmate
+      
+      # Create db directory structure
+      mkdir -p /var/lib/postgresql/db/migrations
+      chown -R postgres:postgres /var/lib/postgresql/db
+      
+      # Copy migrations
+      cp -r /tmp/db/* /var/lib/postgresql/db/
+      chown -R postgres:postgres /var/lib/postgresql/db
+      
+      # Run migrations as postgres user
+      sudo -u postgres bash -c 'cd /var/lib/postgresql/db && DATABASE_URL="postgresql:///llm_logs?sslmode=disable" dbmate up'
+    owner: root:root
+    permissions: '0755'
+  - path: /tmp/db/
     owner: postgres:postgres
-    permissions: '0644'
+    permissions: '0755'
 
 runcmd:
   # Configure PostgreSQL
@@ -99,19 +103,19 @@ runcmd:
   - sudo -u postgres psql -c "ALTER SYSTEM SET listen_addresses TO '*';"
   - sudo -u postgres psql -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
   - echo "host all all 0.0.0.0/0 md5" >> /etc/postgresql/14/main/pg_hba.conf
+  # Run database setup
+  - bash /tmp/setup_db.sh
   - systemctl restart postgresql
-  # Run migrations
-  - sudo -u postgres psql -d llm_logs -f /tmp/create_tables.sql
 EOF
 
 # Create droplet
 echo "Creating droplet..."
 doctl compute droplet create \
+    --user-data-file cloud-init.yml \
     --image ubuntu-22-04-x64 \
     --size s-1vcpu-2gb \
     --region lon1 \
     --ssh-keys "$SSH_KEY_ID" \
-    --user-data-file cloud-init.yml \
     --wait \
     "$DROPLET_NAME"
 
@@ -143,6 +147,10 @@ echo "\n2. Or export directly:\nexport DATABASE_URL='${CONNECTION_STRING}'"
 # Add to known hosts
 echo "Adding to known hosts..."
 ssh-keyscan -H ${DROPLET_IP} >> ~/.ssh/known_hosts
+
+# Copy db directory to droplet
+echo "Copying database migrations..."
+scp -i ~/.ssh/${SSH_KEY_NAME} -r db root@${DROPLET_IP}:/tmp/
 
 # Wait for PostgreSQL to be ready
 echo "Waiting for PostgreSQL to be ready..."

@@ -55,17 +55,17 @@ def _log_and_return(func: Any, endpoint: str):
             trace = LLMTrace(
                 model=kwargs.get("model", "unknown"),
                 endpoint=endpoint,
-                prompt=kwargs.get("messages", kwargs.get("prompt", [])),
-                response=response.model_dump(),
+                input_messages=kwargs.get("messages", []),
+                raw_response=response.model_dump() if hasattr(response, 'model_dump') else None,
                 latency_ms=latency,
                 status_code=200,
                 prompt_tokens=usage.get("prompt_tokens"),
                 completion_tokens=usage.get("completion_tokens"),
                 total_tokens=usage.get("total_tokens"),
                 metadata={
-                    "temperature": kwargs.get("temperature", 1.0),
+                    "temperature": kwargs.get("temperature"),
                     "max_tokens": kwargs.get("max_tokens"),
-                    "top_p": kwargs.get("top_p", 1.0),
+                    "top_p": kwargs.get("top_p"),
                 }
             )
             
@@ -79,7 +79,7 @@ def _log_and_return(func: Any, endpoint: str):
             trace = LLMTrace(
                 model=kwargs.get("model", "unknown"),
                 endpoint=endpoint,
-                prompt=kwargs.get("messages", kwargs.get("prompt", [])),
+                messages=kwargs.get("messages", []),
                 error=str(e),
                 status_code=500,
                 meta_data={"traceback": traceback.format_exc()}

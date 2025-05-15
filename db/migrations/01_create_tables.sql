@@ -1,11 +1,11 @@
 -- migrate:up
-CREATE TABLE llm_traces (
+CREATE TABLE IF NOT EXISTS llm_traces (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     model VARCHAR(255),
     endpoint VARCHAR(255),
-    prompt JSONB,
-    response JSONB,
+    input_messages JSONB DEFAULT '[]'::jsonb,
+    raw_response JSONB,
     latency_ms FLOAT,
     status_code INTEGER,
     prompt_tokens INTEGER,
@@ -16,4 +16,4 @@ CREATE TABLE llm_traces (
 );
 
 -- migrate:down
-DROP TABLE llm_traces;
+DROP TABLE IF EXISTS llm_traces;
