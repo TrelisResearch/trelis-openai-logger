@@ -28,7 +28,7 @@ client = OpenAI(
 # Use normally - all calls are automatically logged
 response = client.chat.completions.create(
     model="gpt-4.1-mini",
-    messages=[{"role": "user", "content": "What's one and two?"}],
+    messages=[{"role": "user", "content": "What's one and two, added?"}],
 )
 
 # Print response
@@ -141,7 +141,7 @@ The script will:
 SSH_KEY_ID=$(doctl compute ssh-key list --format ID --no-header)
 ```
 
-3. Create droplet with PostgreSQL:
+2. Create droplet with PostgreSQL:
 ```bash
 # Create cloud-init config
 cat > cloud-init.yml << 'EOF'
