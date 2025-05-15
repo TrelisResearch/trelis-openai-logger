@@ -1,51 +1,26 @@
 #!/bin/bash
 
-# Exit on error and debug output
 set -e
-set -x
 
-# Get the directory where the script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
 
-# Load environment variables
-if [ -f "$PROJECT_ROOT/.env" ]; then
-    echo "Loading .env file from $PROJECT_ROOT/.env"
-    set -a
-    source "$PROJECT_ROOT/.env"
-    set +a
-fi
+[ -f "$PROJECT_ROOT/.env" ] && source "$PROJECT_ROOT/.env"
 
-# Verify DATABASE_URL is set
-if [ -z "${DATABASE_URL}" ]; then
-    echo "Error: DATABASE_URL is not set"
-    exit 1
-fi
+[ -z "${DATABASE_URL}" ] && echo "Error: DATABASE_URL is not set" && exit 1
 
-# Install dbmate if not present
-if ! command -v dbmate &> /dev/null; then
-    echo "Installing dbmate..."
-    brew install dbmate
-fi
+# Install dbmate if needed
+[ ! -x "$(command -v dbmate)" ] && brew install dbmate
 
-# Store original DATABASE_URL
+# Setup llm_logs database
 ORIGINAL_URL="${DATABASE_URL}"
+psql "${ORIGINAL_URL}" -c 'CREATE DATABASE llm_logs WITH OWNER = doadmin;' >/dev/null 2>&1 || true
 
-# Create and set up llm_logs database
-psql "${ORIGINAL_URL}" -c 'CREATE DATABASE llm_logs WITH OWNER = doadmin;' 2>/dev/null || true
-
-# Switch to llm_logs database
 LLM_LOGS_URL=$(echo "${ORIGINAL_URL}" | sed 's/defaultdb/llm_logs/')
-
-# Run migrations
 cd "$PROJECT_ROOT"
 export DBMATE_MIGRATIONS_DIR="$PROJECT_ROOT/db/migrations"
-DATABASE_URL="${LLM_LOGS_URL}" dbmate up
+DATABASE_URL="${LLM_LOGS_URL}" dbmate up >/dev/null 2>&1
 
-# Update .env
-sed -i.bak "s|${ORIGINAL_URL}|${LLM_LOGS_URL}|g" "$PROJECT_ROOT/.env"
+sed -i.bak "s|${ORIGINAL_URL}|${LLM_LOGS_URL}|g" "$PROJECT_ROOT/.env" && rm "$PROJECT_ROOT/.env.bak"
 
-echo "✓ Database setup complete"
-echo "✓ Updated .env to use llm_logs database"
-echo ""
-echo "You can now run: source .env && uv run example.py"
+echo "Run: source .env && uv run example.py"

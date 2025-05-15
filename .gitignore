@@ -1,5 +1,6 @@
 .env
 .env.bak
+.env.backup
 .venv/
 __pycache__
 
